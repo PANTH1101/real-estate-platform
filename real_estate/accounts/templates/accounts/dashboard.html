@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Seller Dashboard | Real Estate{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-lg-3 mb-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1">{{ seller.name }}</h5>
+                <p class="text-muted small mb-1">{{ seller.email }}</p>
+                <p class="text-muted small mb-3">{{ seller.phone }}</p>
+                <a href="{% url 'accounts:profile' %}" class="btn btn-outline-primary btn-sm w-100 mb-2">Edit Profile</a>
+                <a href="{% url 'property_create' %}" class="btn btn-primary btn-sm w-100">List New Property</a>
+            </div>
+        </div>
+        <div class="card shadow-sm mt-3">
+            <div class="card-body">
+                <h6 class="card-title mb-2">Analytics</h6>
+                <p class="small mb-1">Total Properties: <strong>{{ properties|length }}</strong></p>
+                <p class="small mb-0">Total Leads: <strong>{{ total_leads }}</strong></p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-9">
+        <h1 class="h5 mb-3">My Properties</h1>
+        <div class="row g-3">
+            {% for p in properties %}
+                <div class="col-md-6">
+                    <div class="card shadow-sm property-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="card-title mb-1">{{ p.title|truncatechars:40 }}</h5>
+                                    <p class="small text-muted mb-1">{{ p.city }}, {{ p.state }}</p>
+                                </div>
+                                <span class="badge {% if p.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {% if p.is_active %}Live{% else %}Draft{% endif %}
+                                </span>
+                            </div>
+                            <p class="mb-1 text-primary fw-semibold">₹ {{ p.price|floatformat:0 }}</p>
+                            <p class="small text-muted mb-2">{{ p.bhk }} BHK · {{ p.sqft }} sq.ft</p>
+                            <p class="small mb-2">Leads: <strong>{{ p.leads.count }}</strong></p>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'property:detail' p.id %}" class="btn btn-sm btn-outline-secondary">Preview</a>
+                                <a href="{% url 'property:edit' p.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                <form method="post" action="{% url 'property:delete' p.id %}" onsubmit="return confirm('Delete this property?');">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p>You have not listed any properties yet. <a href="{% url 'property_create' %}">List your first property</a>.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
