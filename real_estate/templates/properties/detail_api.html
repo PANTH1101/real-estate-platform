@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Property Details - Real Estate Hub{% endblock %}
+
+{% block content %}
+<div id="propertyDetailContainer">
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/api.js' %}"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script>
+const propertyId = window.location.pathname.split('/').filter(p => p).pop();
+let currentUser = null;
+
+async function loadPropertyDetail() {
+    const container = document.getElementById('propertyDetailContainer');
+    
+    try {
+        const prop = await propertyAPI.get(propertyId);
+        currentUser = await checkAuth();
+        
+        const images = prop.media && prop.media.length > 0 
+            ? prop.media.map(m => `<img src="${m.file}" class="img-fluid rounded mb-2" alt="${prop.title}">`).join('')
+            : '<img src="/static/images/placeholder.jpg" class="img-fluid rounded" alt="No image">';
+        
+        const price = formatCurrency(prop.price);
+        const statusBadge = prop.status === 'SOLD' 
+            ? '<span class="badge bg-danger fs-6">Sold</span>' 
+            : '<span class="badge bg-success fs-6">Available</span>';
+        
+        const wishlistBtn = currentUser && currentUser.role === 'BUYER'
+            ? `<button id="wishlistBtn" class="btn btn-outline-danger">
+                <i class="bi bi-heart"></i> Add to Wishlist
+               </button>`
+            : '';
+        
+        const enquiryForm = currentUser && currentUser.role === 'BUYER'
+            ? `
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5>Send Enquiry</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="enquiryForm">
+                            <textarea class="form-control mb-3" id="message" name="message" rows="4" placeholder="Your message..." required></textarea>
+                            <button type="submit" class="btn btn-primary">Send Enquiry</button>
+                        </form>
+                    </div>
+                </div>
+            `
+            : '<p class="text-muted">Please <a href="/accounts/login/">login</a> as a buyer to send enquiries.</p>';
+        
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <div id="propertyImages" class="mb-4">
+                                ${images}
+                            </div>
+                            <h1 class="mb-3">${prop.title}</h1>
+                            <p class="text-muted mb-3">${prop.city}, ${prop.locality}</p>
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h2 class="text-primary mb-0">${price}</h2>
+                                ${statusBadge}
+                            </div>
+                            <hr>
+                            <h5>Description</h5>
+                            <p>${prop.description || 'No description provided.'}</p>
+                            <hr>
+                            <h5>Property Details</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <strong>Type:</strong> ${prop.property_type}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <strong>Listing:</strong> ${prop.listing_type}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <strong>Area:</strong> ${prop.area_sqft} sqft
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <strong>Bedrooms:</strong> ${prop.bedrooms || 'N/A'}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <strong>Bathrooms:</strong> ${prop.bathrooms || 'N/A'}
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <strong>Status:</strong> ${prop.status}
+                                </div>
+                            </div>
+                            ${prop.latitude && prop.longitude ? `
+                                <hr>
+                                <h5>Location</h5>
+                                <div id="map" style="height: 300px; border-radius: 8px;"></div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${enquiryForm}
+                </div>
+                <div class="col-lg-4">
+                    <div class="card shadow-sm sticky-top" style="top: 20px;">
+                        <div class="card-body">
+                            <h5>Contact Owner</h5>
+                            <p class="text-muted">Owner: ${prop.owner_name || 'N/A'}</p>
+                            ${wishlistBtn}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Initialize map if coordinates exist
+        if (prop.latitude && prop.longitude) {
+            const map = L.map('map').setView([prop.latitude, prop.longitude], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            L.marker([prop.latitude, prop.longitude]).addTo(map);
+        }
+        
+        // Wishlist button handler
+        if (document.getElementById('wishlistBtn')) {
+            document.getElementById('wishlistBtn').addEventListener('click', async () => {
+                try {
+                    await wishlistAPI.add(prop.id);
+                    showAlert('Added to wishlist!', 'success');
+                    document.getElementById('wishlistBtn').innerHTML = '<i class="bi bi-heart-fill"></i> In Wishlist';
+                    document.getElementById('wishlistBtn').classList.remove('btn-outline-danger');
+                    document.getElementById('wishlistBtn').classList.add('btn-danger');
+                } catch (error) {
+                    showAlert(error.message, 'danger');
+                }
+            });
+        }
+        
+        // Enquiry form handler
+        if (document.getElementById('enquiryForm')) {
+            document.getElementById('enquiryForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending...';
+                
+                try {
+                    await enquiryAPI.create({
+                        property_id: prop.id,
+                        message: form.message.value,
+                    });
+                    showAlert('Enquiry sent successfully!', 'success');
+                    form.reset();
+                } catch (error) {
+                    showAlert(error.message || 'Failed to send enquiry.', 'danger');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            });
+        }
+    } catch (error) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <h4>Property not found</h4>
+                <p>${error.message}</p>
+                <a href="/properties/" class="btn btn-primary">Back to Properties</a>
+            </div>
+        `;
+    }
+}
+
+loadPropertyDetail();
+</script>
+{% endblock %}
+

@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Seller Dashboard - Real Estate Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Seller Menu</h5>
+                <ul class="list-unstyled">
+                    <li><a href="#properties" class="text-decoration-none">My Properties</a></li>
+                    <li><a href="#enquiries" class="text-decoration-none">Enquiries</a></li>
+                    <li><a href="#add" class="text-decoration-none">Add Property</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Seller Dashboard</h2>
+            <a href="/properties/create/" class="btn btn-primary">+ Add Property</a>
+        </div>
+        
+        <div id="propertiesSection">
+            <h4>My Properties</h4>
+            <div id="propertiesContainer" class="row g-3">
+                <div class="col-12 text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="enquiriesSection" class="mt-5">
+            <h4>Property Enquiries</h4>
+            <div id="enquiriesContainer">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/api.js' %}"></script>
+<script>
+(async () => {
+    const user = await requireAuth();
+    if (!user || user.role !== 'SELLER') {
+        window.location.href = '/';
+        return;
+    }
+    
+    // Load seller's properties
+    try {
+        const data = await propertyAPI.list();
+        const container = document.getElementById('propertiesContainer');
+        if (data.results && data.results.length > 0) {
+            container.innerHTML = data.results.map(prop => {
+                const imageUrl = prop.media && prop.media.length > 0 
+                    ? prop.media[0].file 
+                    : '/static/images/placeholder.jpg';
+                const approvalBadge = prop.is_approved 
+                    ? '<span class="badge bg-success">Approved</span>' 
+                    : '<span class="badge bg-warning">Pending</span>';
+                return `
+                    <div class="col-md-6">
+                        <div class="card">
+                            <img src="${imageUrl}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                            <div class="card-body">
+                                <h6>${prop.title}</h6>
+                                <p class="text-primary">${formatCurrency(prop.price)}</p>
+                                ${approvalBadge}
+                                <div class="mt-2">
+                                    <a href="/properties/${prop.id}/" class="btn btn-sm btn-primary">View</a>
+                                    <a href="/properties/${prop.id}/edit/" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <button onclick="deleteProperty('${prop.id}')" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = '<p class="text-muted">You have no properties yet. <a href="/properties/create/">Add one</a></p>';
+        }
+    } catch (error) {
+        showAlert('Failed to load properties.', 'danger');
+    }
+    
+    // Load enquiries
+    try {
+        const enquiries = await enquiryAPI.listSeller();
+        const container = document.getElementById('enquiriesContainer');
+        if (enquiries.results && enquiries.results.length > 0) {
+            container.innerHTML = enquiries.results.map(eq => `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <h6>${eq.property_title}</h6>
+                        <p>${eq.message}</p>
+                        <small class="text-muted">From: ${eq.buyer_name} - ${new Date(eq.created_at).toLocaleDateString()}</small>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-muted">No enquiries yet.</p>';
+        }
+    } catch (error) {
+        showAlert('Failed to load enquiries.', 'danger');
+    }
+})();
+
+async function deleteProperty(id) {
+    if (!confirm('Are you sure you want to delete this property?')) return;
+    try {
+        await propertyAPI.delete(id);
+        showAlert('Property deleted!', 'success');
+        location.reload();
+    } catch (error) {
+        showAlert(error.message, 'danger');
+    }
+}
+</script>
+{% endblock %}
+

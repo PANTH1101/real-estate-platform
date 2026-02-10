@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard - Real Estate Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Admin Menu</h5>
+                <ul class="list-unstyled">
+                    <li><a href="#analytics" class="text-decoration-none">Analytics</a></li>
+                    <li><a href="#users" class="text-decoration-none">Users</a></li>
+                    <li><a href="#properties" class="text-decoration-none">Properties</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <h2 class="mb-4">Admin Dashboard</h2>
+        
+        <div id="analyticsSection" class="mb-5">
+            <h4>Analytics</h4>
+            <div id="analyticsContainer" class="row g-3">
+                <div class="col-12 text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="usersSection" class="mb-5">
+            <h4>Users</h4>
+            <div id="usersContainer">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/api.js' %}"></script>
+<script>
+(async () => {
+    const user = await requireAuth();
+    if (!user || user.role !== 'ADMIN') {
+        window.location.href = '/';
+        return;
+    }
+    
+    // Load analytics
+    try {
+        const analytics = await adminAPI.getAnalytics();
+        const container = document.getElementById('analyticsContainer');
+        container.innerHTML = `
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3>${analytics.total_users || 0}</h3>
+                        <p class="text-muted mb-0">Total Users</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3>${analytics.total_properties || 0}</h3>
+                        <p class="text-muted mb-0">Total Properties</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3>${analytics.approved_properties || 0}</h3>
+                        <p class="text-muted mb-0">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3>${analytics.pending_properties || 0}</h3>
+                        <p class="text-muted mb-0">Pending</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        showAlert('Failed to load analytics.', 'danger');
+    }
+    
+    // Load users
+    try {
+        const users = await adminAPI.getUsers();
+        const container = document.getElementById('usersContainer');
+        if (users.results && users.results.length > 0) {
+            container.innerHTML = `
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.results.map(u => `
+                            <tr>
+                                <td>${u.full_name}</td>
+                                <td>${u.email}</td>
+                                <td><span class="badge bg-info">${u.role}</span></td>
+                                <td>${u.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = '<p class="text-muted">No users found.</p>';
+        }
+    } catch (error) {
+        showAlert('Failed to load users.', 'danger');
+    }
+})();
+</script>
+{% endblock %}
+

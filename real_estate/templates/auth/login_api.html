@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login - Real Estate Hub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-sm border-0 mt-5">
+            <div class="card-body p-5">
+                <h2 class="card-title text-center mb-4">Login</h2>
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mb-3">Login</button>
+                </form>
+                <div class="text-center">
+                    <p class="mb-0">Don't have an account? <a href="{% url 'auth_register' %}">Sign up</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/api.js' %}"></script>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in...';
+    
+    try {
+        const data = {
+            email: form.email.value,
+            password: form.password.value,
+        };
+        await authAPI.login(data);
+        showAlert('Login successful! Redirecting...', 'success');
+        setTimeout(() => {
+            const user = await checkAuth();
+            if (user) {
+                if (user.role === 'ADMIN') {
+                    window.location.href = '/dashboard/admin/';
+                } else if (user.role === 'SELLER') {
+                    window.location.href = '/dashboard/seller/';
+                } else {
+                    window.location.href = '/dashboard/buyer/';
+                }
+            } else {
+                window.location.href = '/';
+            }
+        }, 1000);
+    } catch (error) {
+        showAlert(error.message || 'Login failed. Please check your credentials.', 'danger');
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+});
+</script>
+{% endblock %}
+

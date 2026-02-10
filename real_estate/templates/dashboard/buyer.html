@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Buyer Dashboard - Real Estate Hub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">My Account</h5>
+                <ul class="list-unstyled">
+                    <li><a href="#wishlist" class="text-decoration-none">Wishlist</a></li>
+                    <li><a href="#enquiries" class="text-decoration-none">My Enquiries</a></li>
+                    <li><a href="#profile" class="text-decoration-none">Profile</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <h2 class="mb-4">Buyer Dashboard</h2>
+        
+        <div id="wishlistSection" class="mb-5">
+            <h4>My Wishlist</h4>
+            <div id="wishlistContainer" class="row g-3">
+                <div class="col-12 text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="enquiriesSection" class="mb-5">
+            <h4>My Enquiries</h4>
+            <div id="enquiriesContainer">
+                <p class="text-muted">No enquiries yet.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/api.js' %}"></script>
+<script>
+(async () => {
+    const user = await requireAuth();
+    if (!user) return;
+    
+    // Load wishlist
+    try {
+        const wishlist = await wishlistAPI.list();
+        const container = document.getElementById('wishlistContainer');
+        if (wishlist.results && wishlist.results.length > 0) {
+            container.innerHTML = wishlist.results.map(item => {
+                const prop = item.property;
+                const imageUrl = prop.media && prop.media.length > 0 
+                    ? prop.media[0].file 
+                    : '/static/images/placeholder.jpg';
+                return `
+                    <div class="col-md-6">
+                        <div class="card">
+                            <img src="${imageUrl}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                            <div class="card-body">
+                                <h6>${prop.title}</h6>
+                                <p class="text-primary">${formatCurrency(prop.price)}</p>
+                                <a href="/properties/${prop.id}/" class="btn btn-sm btn-primary">View</a>
+                                <button onclick="removeWishlist('${prop.id}')" class="btn btn-sm btn-outline-danger">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = '<p class="text-muted">Your wishlist is empty.</p>';
+        }
+    } catch (error) {
+        showAlert('Failed to load wishlist.', 'danger');
+    }
+})();
+
+async function removeWishlist(propertyId) {
+    try {
+        await wishlistAPI.remove(propertyId);
+        showAlert('Removed from wishlist!', 'success');
+        location.reload();
+    } catch (error) {
+        showAlert(error.message, 'danger');
+    }
+}
+</script>
+{% endblock %}
+
