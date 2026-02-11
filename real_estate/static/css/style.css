@@ -1,0 +1,93 @@
+body {
+    background-color: #f5f7fa;
+}
+
+.hero-section {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
+
+.hero-image {
+    background-image: linear-gradient(135deg, #0061f2, #0b1727);
+    min-height: 320px;
+    border-radius: 24px;
+}
+
+.search-card {
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.property-card {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.property-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.property-image-wrapper {
+    position: relative;
+    overflow: hidden;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.property-image-wrapper img {
+    height: 180px;
+    object-fit: cover;
+}
+
+.property-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.category-card {
+    text-decoration: none;
+}
+
+.category-inner {
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.category-inner:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(0,0,0,0.1);
+}
+
+.filter-card {
+    border-radius: 12px;
+}
+
+.amenities-scroll {
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.map-placeholder {
+    height: 260px;
+    background: repeating-linear-gradient(
+            45deg,
+            #e9ecef,
+            #e9ecef 10px,
+            #f8f9fa 10px,
+            #f8f9fa 20px
+    );
+}
+
+@media (max-width: 767.98px) {
+    .hero-image {
+        min-height: 200px;
+    }
+}
+
+
