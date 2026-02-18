@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ property.title }} | Real Estate{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div id="detailCarousel" class="carousel slide mb-3" data-bs-ride="carousel">
+            <div class="carousel-inner rounded-3 overflow-hidden shadow-sm">
+                {% if property.images.all %}
+                    {% for img in property.images.all %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ img.image.url }}" class="d-block w-100" alt="{{ property.title }}">
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="carousel-item active">
+                        <img src="{% static 'images/placeholder.jpg' %}" class="d-block w-100" alt="{{ property.title }}">
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <h1 class="h4 mb-2">{{ property.title }}</h1>
+        <p class="text-primary fw-bold fs-5">₹ {{ property.price|floatformat:0 }}</p>
+        <p class="text-muted mb-1"><i class="bi bi-geo-alt"></i> {{ property.address }}, {{ property.city }}, {{ property.state }}</p>
+        <p class="text-muted mb-3">{{ property.bhk }} BHK · {{ property.sqft }} sq.ft · {{ property.get_property_type_display }}</p>
+        <p class="mb-3">{{ property.description }}</p>
+
+        <h5 class="mt-4 mb-2">Amenities</h5>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            {% for a in property.amenities.all %}
+                <span class="badge bg-light text-dark border">{{ a.name }}</span>
+            {% empty %}
+                <span class="text-muted">No amenities listed.</span>
+            {% endfor %}
+        </div>
+
+        <h5 class="mb-2">Location</h5>
+        <div class="map-placeholder mb-4 rounded-3 d-flex align-items-center justify-content-center text-muted">
+            Google Maps Placeholder
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Seller Details</h5>
+                <p class="mb-1 fw-semibold">{{ property.seller.name }}</p>
+                <p class="text-muted small mb-2">Listed on {{ property.created_at|date:"d M Y" }}</p>
+                <button class="btn btn-primary w-100" data-property-id="{{ property.id }}" id="lead-open-btn">
+                    I want to buy this property
+                </button>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="card-title mb-2">Property Highlights</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li>BHK: <strong>{{ property.bhk }}</strong></li>
+                    <li>Area: <strong>{{ property.sqft }} sq.ft</strong></li>
+                    <li>Floor: <strong>{{ property.floor|default:"N/A" }}</strong></li>
+                    <li>Facing: <strong>{{ property.facing|default:"N/A" }}</strong></li>
+                    <li>Parking: <strong>{% if property.parking %}Yes{% else %}No{% endif %}</strong></li>
+                    <li>Balcony: <strong>{% if property.balcony %}Yes{% else %}No{% endif %}</strong></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="leadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">I'm interested in this property</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="lead-form">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label small">Name</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Email</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small">Phone</label>
+                        <input type="text" name="phone" class="form-control" required>
+                    </div>
+                    <div id="lead-error" class="text-danger small d-none"></div>
+                    <div id="seller-contact" class="mt-3 d-none">
+                        <h6>Seller Contact Details</h6>
+                        <p class="mb-0" id="seller-name"></p>
+                        <p class="mb-0" id="seller-email"></p>
+                        <p class="mb-0" id="seller-phone"></p>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const leadButton = document.getElementById("lead-open-btn");
+    const modalEl = document.getElementById("leadModal");
+    const leadForm = document.getElementById("lead-form");
+    const errorEl = document.getElementById("lead-error");
+    const sellerBox = document.getElementById("seller-contact");
+    const sellerName = document.getElementById("seller-name");
+    const sellerEmail = document.getElementById("seller-email");
+    const sellerPhone = document.getElementById("seller-phone");
+
+    if (leadButton && modalEl) {
+        const bsModal = new bootstrap.Modal(modalEl);
+        leadButton.addEventListener("click", function () {
+            errorEl.classList.add("d-none");
+            sellerBox.classList.add("d-none");
+            leadForm.reset();
+            bsModal.show();
+        });
+
+        leadForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            errorEl.classList.add("d-none");
+            const formData = new FormData(leadForm);
+            fetch("{% url 'leads:create' property.id %}", {
+                method: "POST",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": formData.get('csrfmiddlewaretoken')
+                },
+                body: formData
+            }).then(r => r.json()).then(data => {
+                if (data.error) {
+                    errorEl.textContent = data.error;
+                    errorEl.classList.remove("d-none");
+                } else {
+                    sellerName.textContent = "Name: " + data.seller.name;
+                    sellerEmail.textContent = "Email: " + data.seller.email;
+                    sellerPhone.textContent = "Phone: " + data.seller.phone;
+                    sellerBox.classList.remove("d-none");
+                }
+            }).catch(() => {
+                errorEl.textContent = "Something went wrong. Please try again.";
+                errorEl.classList.remove("d-none");
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
+
+

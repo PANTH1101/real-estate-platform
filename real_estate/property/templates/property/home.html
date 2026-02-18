@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Home | Real Estate{% endblock %}
+{% block content %}
+<section class="hero-section mb-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6">
+            <h1 class="display-5 fw-bold mb-3 text-dark">Find your dream home with <span class="text-primary">RealEstateHub</span></h1>
+            <p class="lead text-muted mb-4">Browse thousands of verified properties for rent and sale across top cities.</p>
+            <form method="get" class="card p-3 search-card shadow-sm">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" name="city" class="form-control" placeholder="City">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" name="bhk" class="form-control" placeholder="BHK">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" name="q" class="form-control" placeholder="Keyword (e.g. balcony)">
+                    </div>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-md-6">
+                        <input type="number" name="min_price" class="form-control" placeholder="Min Price">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="number" name="max_price" class="form-control" placeholder="Max Price">
+                    </div>
+                </div>
+                <div class="mt-3 d-flex justify-content-between">
+                    <button class="btn btn-primary px-4">Search Properties</button>
+                    <a href="{% url 'property:list' %}" class="btn btn-outline-secondary">Browse All</a>
+                </div>
+            </form>
+        </div>
+        <div class="col-lg-6 d-none d-lg-block">
+            <div class="hero-image rounded-4 shadow-lg"></div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0">Latest Properties</h2>
+        <a href="{% url 'property:list' %}" class="text-primary">View all</a>
+    </div>
+    <div class="row g-4">
+        {% for p in latest_properties %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card property-card h-100 shadow-sm">
+                    <div class="property-image-wrapper">
+                        {% with img=p.images.all|first %}
+                            {% if img %}
+                                <img src="{{ img.image.url }}" class="card-img-top" alt="{{ p.title }}">
+                            {% else %}
+                                <img src="{% static 'images/placeholder.jpg' %}" class="card-img-top" alt="{{ p.title }}">
+                            {% endif %}
+                        {% endwith %}
+                        <span class="badge bg-primary property-badge">{{ p.get_property_type_display }}</span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ p.title|truncatechars:40 }}</h5>
+                        <p class="card-text text-primary fw-semibold mb-1">₹ {{ p.price|floatformat:0 }}</p>
+                        <p class="card-text text-muted small mb-1">{{ p.city }}, {{ p.state }}</p>
+                        <p class="card-text text-muted small mb-2">{{ p.bhk }} BHK · {{ p.sqft }} sq.ft</p>
+                        <a href="{% url 'property:detail' p.id %}" class="btn btn-sm btn-outline-primary w-100">View Details</a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <p>No properties yet. Be the first to <a href="{% url 'property_create' %}">list a property</a>.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="mb-4">
+    <h2 class="h4 mb-3">Browse by Category</h2>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <a href="{% url 'property:list' %}?category=RES" class="category-card">
+                <div class="category-inner">
+                    <h5>Residential</h5>
+                    <p class="small mb-0 text-muted">Apartments, villas, builder floors</p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'property:list' %}?category=COM" class="category-card">
+                <div class="category-inner">
+                    <h5>Commercial</h5>
+                    <p class="small mb-0 text-muted">Offices, shops, co-working</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+

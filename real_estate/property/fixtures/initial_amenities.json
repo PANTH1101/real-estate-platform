@@ -1,0 +1,9 @@
+[
+  { "model": "property.amenity", "pk": 1, "fields": { "name": "Lift" } },
+  { "model": "property.amenity", "pk": 2, "fields": { "name": "Power Backup" } },
+  { "model": "property.amenity", "pk": 3, "fields": { "name": "Gym" } },
+  { "model": "property.amenity", "pk": 4, "fields": { "name": "Swimming Pool" } },
+  { "model": "property.amenity", "pk": 5, "fields": { "name": "Park" } }
+]
+
+

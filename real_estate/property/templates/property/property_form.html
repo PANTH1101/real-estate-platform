@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{% if property %}Edit{% else %}Create{% endif %} Property | Real Estate{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h1 class="h4 mb-3">{% if property %}Edit{% else %}List{% endif %} Property</h1>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        {% for field in form %}
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text small">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <hr class="my-4">
+                    <h6>Images</h6>
+                    {{ formset.management_form }}
+                    <div class="row g-3">
+                        {% for f in formset.forms %}
+                            <div class="col-md-4">
+                                <div class="border rounded p-2 small">
+                                    {{ f.image.label_tag }} {{ f.image }}
+                                    <div class="form-check mt-1">
+                                        {{ f.is_primary }} <label class="form-check-label">Primary</label>
+                                    </div>
+                                    {% if f.instance.pk %}
+                                        <div class="form-check mt-1">
+                                            {{ f.DELETE }} <label class="form-check-label">Delete</label>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <button class="btn btn-primary">Save &amp; Continue to Payment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
