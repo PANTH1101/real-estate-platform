@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Payment Success | Real Estate{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="h4 mb-2 text-success">Payment Successful</h1>
+                <p class="mb-3">Your property <strong>{{ property.title }}</strong> is now live.</p>
+                <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
+                <a href="{% url 'property:detail' property.id %}" class="btn btn-outline-secondary ms-2">View Listing</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
