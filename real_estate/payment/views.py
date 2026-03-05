@@ -30,6 +30,14 @@ class PaymentCreateView(View):
         prop = get_object_or_404(Property, id=property_id)
         amount_rupees = decimal.Decimal("499.00")
         amount_paise = int(amount_rupees * 100)
+        
+        # Development bypass: activate property without payment if in DEBUG mode
+        if settings.DEBUG and request.GET.get("skip_payment") == "1":
+            prop.is_active = True
+            prop.save(update_fields=["is_active"])
+            messages.success(request, "Property activated (development mode - payment skipped).")
+            return redirect("accounts:dashboard")
+        
         if razorpay is None:
             messages.error(
                 request,

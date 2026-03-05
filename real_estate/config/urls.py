@@ -16,7 +16,6 @@ urlpatterns = [
     # legacy UI + pages (kept)
     path("", HomeView.as_view(), name="home"),
     path("accounts/", include("accounts.urls")),
-    path("properties/", include("property.urls")),
     path("property/create/", PropertyCreateView.as_view(), name="property_create"),
     path("leads/", include("leads.urls")),
     path("payment/", include("payment.urls")),
@@ -31,10 +30,12 @@ urlpatterns = [
     path("auth/login/", lambda r: render_template(r, "auth/login_api.html"), name="auth_login"),
     path("auth/register/", lambda r: render_template(r, "auth/register_api.html"), name="auth_register"),
     path("properties/list/", lambda r: render_template(r, "properties/list_api.html"), name="properties_list_api"),
-    path("properties/<uuid:pk>/", lambda r, pk: render_template(r, "properties/detail_api.html", {"property_id": pk}), name="property_detail_api"),
+    path("properties/detail/<uuid:pk>/", lambda r, pk: render_template(r, "properties/detail_api.html", {"property_id": pk}), name="property_detail_api"),
     path("dashboard/buyer/", BuyerDashboardView.as_view(), name="dashboard_buyer"),
     path("dashboard/seller/", SellerDashboardView.as_view(), name="dashboard_seller"),
     path("dashboard/admin/", AdminDashboardView.as_view(), name="dashboard_admin"),
+    # legacy property URLs (must be last to avoid conflicts)
+    path("properties/", include("property.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

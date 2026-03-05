@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -160,7 +161,10 @@ class PropertyCreateView(View):
                 request,
                 "Property saved as draft. Complete payment to list it publicly.",
             )
-            return redirect(f"{reverse('payment:create')}?property_id={prop.id}")
+            payment_url = f"{reverse('payment:create')}?property_id={prop.id}"
+            if settings.DEBUG:
+                payment_url += "&skip_payment=1"
+            return redirect(payment_url)
         return render(
             request,
             self.template_name,
@@ -227,5 +231,3 @@ class PropertyDeleteView(View):
         prop.delete()
         messages.info(request, "Property deleted.")
         return redirect("accounts:dashboard")
-
-
