@@ -1,5 +1,24 @@
 {% extends "base.html" %}
 {% block title %}{% if property %}Edit{% else %}Create{% endif %} Property | Real Estate{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        width: 100%;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+    .map-instructions {
+        background-color: #e7f3ff;
+        border-left: 4px solid #0d6efd;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
@@ -10,18 +29,30 @@
                     {% csrf_token %}
                     <div class="row g-3">
                         {% for field in form %}
-                            <div class="col-md-6">
-                                <label class="form-label small">{{ field.label }}</label>
+                            {% if field.name == 'latitude' or field.name == 'longitude' %}
                                 {{ field }}
-                                {% if field.help_text %}
-                                    <div class="form-text small">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% for error in field.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
+                            {% else %}
+                                <div class="col-md-6">
+                                    <label class="form-label small">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="form-text small">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
+                    
+                    <hr class="my-4">
+                    <h6>Property Location</h6>
+                    <div class="map-instructions">
+                        <i class="bi bi-info-circle"></i> Click on the map to mark the exact location of your property. You can drag the marker to adjust the position.
+                    </div>
+                    <div id="map"></div>
+                    
                     <hr class="my-4">
                     <h6>Images</h6>
                     {{ formset.management_form }}
@@ -51,6 +82,82 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Get existing coordinates if editing
+    var existingLat = parseFloat(document.getElementById("id_latitude").value) || null;
+    var existingLng = parseFloat(document.getElementById("id_longitude").value) || null;
+    
+    // Initialize map - center on India or existing location
+    var initialLat = existingLat || 20.5937;
+    var initialLng = existingLng || 78.9629;
+    var initialZoom = existingLat ? 13 : 5;
+    
+    var map = L.map('map').setView([initialLat, initialLng], initialZoom);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    var marker = null;
+    
+    // Add existing marker if editing
+    if (existingLat && existingLng) {
+        marker = L.marker([existingLat, existingLng], {
+            draggable: true
+        }).addTo(map);
+        
+        // Update coordinates when marker is dragged
+        marker.on('dragend', function(e) {
+            var position = marker.getLatLng();
+            document.getElementById("id_latitude").value = position.lat.toFixed(6);
+            document.getElementById("id_longitude").value = position.lng.toFixed(6);
+        });
+    }
+    
+    // Add marker on map click
+    map.on('click', function(e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+        
+        // Remove existing marker if any
+        if (marker) {
+            map.removeLayer(marker);
+        }
+        
+        // Add new draggable marker
+        marker = L.marker([lat, lng], {
+            draggable: true
+        }).addTo(map);
+        
+        // Update hidden fields
+        document.getElementById("id_latitude").value = lat.toFixed(6);
+        document.getElementById("id_longitude").value = lng.toFixed(6);
+        
+        // Update coordinates when marker is dragged
+        marker.on('dragend', function(e) {
+            var position = marker.getLatLng();
+            document.getElementById("id_latitude").value = position.lat.toFixed(6);
+            document.getElementById("id_longitude").value = position.lng.toFixed(6);
+        });
+    });
+    
+    // Optional: Try to get user's location
+    if (navigator.geolocation && !existingLat) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var userLat = position.coords.latitude;
+            var userLng = position.coords.longitude;
+            map.setView([userLat, userLng], 13);
+        });
+    }
+});
+</script>
 {% endblock %}
 
 

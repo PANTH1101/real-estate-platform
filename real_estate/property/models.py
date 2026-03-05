@@ -66,6 +66,8 @@ class Property(models.Model):
     address = models.CharField(max_length=255)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=100)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     facing = models.CharField(max_length=50, blank=True)
     parking = models.BooleanField(default=False)
     balcony = models.BooleanField(default=False)
