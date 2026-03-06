@@ -2,6 +2,7 @@
 {% block title %}{% if property %}Edit{% else %}Create{% endif %} Property | Real Estate{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 <style>
     #map {
         height: 400px;
@@ -39,78 +40,400 @@
         text-align: center;
         color: #6c757d;
     }
+    .property-type-fields {
+        display: none !important;
+    }
+    .property-type-fields.active {
+        display: block !important;
+    }
+    .field-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+    .field-section h6 {
+        color: #0d6efd;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+    .property-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
 </style>
 {% endblock %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-10">
         <h1 class="h4 mb-3">{% if property %}Edit{% else %}List{% endif %} Property</h1>
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="property-form">
                     {% csrf_token %}
-                    <div class="row g-3">
-                        {% for field in form %}
-                            {% if field.name == 'latitude' or field.name == 'longitude' %}
-                                {{ field }}
-                            {% else %}
-                                <div class="col-md-6">
-                                    <label class="form-label small">{{ field.label }}</label>
-                                    {{ field }}
-                                    {% if field.help_text %}
-                                        <div class="form-text small">{{ field.help_text }}</div>
-                                    {% endif %}
-                                    {% for error in field.errors %}
-                                        <div class="text-danger small">{{ error }}</div>
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
                     
-                    <hr class="my-4">
-                    <h6>Property Location</h6>
-                    <div class="map-instructions">
-                        <i class="bi bi-info-circle"></i> Search for a location or click on the map to mark the exact location of your property. You can drag the marker to adjust the position.
-                    </div>
-                    
-                    <!-- Location Search -->
-                    <div class="mb-3">
-                        <div class="input-group">
-                            <input type="text" id="location-search" class="form-control" placeholder="Search for address, city, or landmark...">
-                            <button class="btn btn-primary" type="button" id="search-btn">
-                                <i class="bi bi-search"></i> Search
-                            </button>
+                    <!-- Basic Information Section -->
+                    <div class="field-section">
+                        <h6><i class="bi bi-info-circle"></i> Basic Information</h6>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label small">{{ form.title.label }}</label>
+                                {{ form.title }}
+                                {% for error in form.title.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small">{{ form.description.label }}</label>
+                                {{ form.description }}
+                                {% for error in form.description.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.category.label }}</label>
+                                {{ form.category }}
+                                {% for error in form.category.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.subcategory.label }} <span class="text-danger">*</span></label>
+                                {{ form.subcategory }}
+                                <small class="text-muted d-block">Select property type to show relevant fields</small>
+                                {% for error in form.subcategory.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.property_type.label }}</label>
+                                {{ form.property_type }}
+                                {% for error in form.property_type.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.price.label }}</label>
+                                {{ form.price }}
+                                {% for error in form.price.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                            </div>
                         </div>
-                        <div id="search-results" class="list-group mt-2" style="display: none;"></div>
-                        <small class="text-muted">Example: "Connaught Place, New Delhi" or "Mumbai Central Station"</small>
                     </div>
+
+                    <!-- Hidden fields -->
+                    {{ form.latitude }}
+                    {{ form.longitude }}
                     
-                    <div id="map"></div>
-                    
-                    <hr class="my-4">
-                    <h6>Images</h6>
-                    {{ formset.management_form }}
-                    <div class="row g-3">
-                        {% for f in formset.forms %}
-                            <div class="col-md-4">
-                                <div class="border rounded p-2 small">
-                                    {{ f.image.label_tag }} {{ f.image }}
-                                    <div class="form-check mt-1">
-                                        {{ f.is_primary }} <label class="form-check-label">Primary</label>
+                    <!-- Dynamic Fields Based on Property Type -->
+                    <div id="dynamic-fields-container">
+                        
+                        <!-- Apartment Fields -->
+                        <div id="apartment-fields" class="property-type-fields field-section">
+                            <h6><i class="bi bi-building"></i> Apartment Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.bhk.label }} <span class="text-danger">*</span></label>
+                                    {{ form.bhk }}
+                                    <small class="text-muted d-block">Required for apartments</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.floor.label }} <span class="text-danger">*</span></label>
+                                    {{ form.floor }}
+                                    <small class="text-muted d-block">Required for apartments</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.total_floors.label }} <span class="text-danger">*</span></label>
+                                    {{ form.total_floors }}
+                                    <small class="text-muted d-block">Required for apartments</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.sqft.label }} <span class="text-danger">*</span></label>
+                                    {{ form.sqft }}
+                                    <small class="text-muted d-block">Required for apartments</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.furnishing.label }}</label>
+                                    {{ form.furnishing }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.maintenance_charges.label }}</label>
+                                    {{ form.maintenance_charges }}
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.parking }}
+                                        <label class="form-check-label">{{ form.parking.label }}</label>
                                     </div>
-                                    {% if f.instance.pk %}
-                                        <div class="form-check mt-1">
-                                            {{ f.DELETE }} <label class="form-check-label">Delete</label>
-                                        </div>
-                                    {% endif %}
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.balcony }}
+                                        <label class="form-check-label">{{ form.balcony.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.lift }}
+                                        <label class="form-check-label">{{ form.lift.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.facing.label }}</label>
+                                    {{ form.facing }}
                                 </div>
                             </div>
-                        {% endfor %}
+                        </div>
+
+                        <!-- Villa Fields -->
+                        <div id="villa-fields" class="property-type-fields field-section">
+                            <h6><i class="bi bi-house"></i> Villa / House Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.bhk.label }} <span class="text-danger">*</span></label>
+                                    {{ form.bhk }}
+                                    <small class="text-muted d-block">Required for villas</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.floor.label }}</label>
+                                    {{ form.floor }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.plot_area.label }} <span class="text-danger">*</span></label>
+                                    {{ form.plot_area }}
+                                    {% if form.plot_area.help_text %}<small class="text-muted d-block">{{ form.plot_area.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.built_up_area.label }} <span class="text-danger">*</span></label>
+                                    {{ form.built_up_area }}
+                                    {% if form.built_up_area.help_text %}<small class="text-muted d-block">{{ form.built_up_area.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.furnishing.label }}</label>
+                                    {{ form.furnishing }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.facing.label }}</label>
+                                    {{ form.facing }}
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.parking }}
+                                        <label class="form-check-label">{{ form.parking.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.balcony }}
+                                        <label class="form-check-label">{{ form.balcony.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.garden }}
+                                        <label class="form-check-label">{{ form.garden.label }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Plot Fields -->
+                        <div id="plot-fields" class="property-type-fields field-section">
+                            <h6><i class="bi bi-map"></i> Plot / Land Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.plot_area.label }} <span class="text-danger">*</span></label>
+                                    {{ form.plot_area }}
+                                    {% if form.plot_area.help_text %}<small class="text-muted d-block">{{ form.plot_area.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.plot_length.label }}</label>
+                                    {{ form.plot_length }}
+                                    {% if form.plot_length.help_text %}<small class="text-muted d-block">{{ form.plot_length.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.plot_width.label }}</label>
+                                    {{ form.plot_width }}
+                                    {% if form.plot_width.help_text %}<small class="text-muted d-block">{{ form.plot_width.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.facing.label }}</label>
+                                    {{ form.facing }}
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-4">
+                                        {{ form.boundary_wall }}
+                                        <label class="form-check-label">{{ form.boundary_wall.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check mt-4">
+                                        {{ form.corner_plot }}
+                                        <label class="form-check-label">{{ form.corner_plot.label }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Office Fields -->
+                        <div id="office-fields" class="property-type-fields field-section">
+                            <h6><i class="bi bi-briefcase"></i> Commercial Office Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.sqft.label }} <span class="text-danger">*</span></label>
+                                    {{ form.sqft }}
+                                    <small class="text-muted d-block">Required for offices</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.floor.label }} <span class="text-danger">*</span></label>
+                                    {{ form.floor }}
+                                    <small class="text-muted d-block">Required for offices</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.cabins.label }}</label>
+                                    {{ form.cabins }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.conference_rooms.label }}</label>
+                                    {{ form.conference_rooms }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.furnishing.label }}</label>
+                                    {{ form.furnishing }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.facing.label }}</label>
+                                    {{ form.facing }}
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.parking }}
+                                        <label class="form-check-label">{{ form.parking.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.pantry }}
+                                        <label class="form-check-label">{{ form.pantry.label }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shop Fields -->
+                        <div id="shop-fields" class="property-type-fields field-section">
+                            <h6><i class="bi bi-shop"></i> Shop / Showroom Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.sqft.label }} <span class="text-danger">*</span></label>
+                                    {{ form.sqft }}
+                                    <small class="text-muted d-block">Required for shops</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.floor.label }} <span class="text-danger">*</span></label>
+                                    {{ form.floor }}
+                                    <small class="text-muted d-block">Required for shops</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.frontage_width.label }}</label>
+                                    {{ form.frontage_width }}
+                                    {% if form.frontage_width.help_text %}<small class="text-muted d-block">{{ form.frontage_width.help_text }}</small>{% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small">{{ form.facing.label }}</label>
+                                    {{ form.facing }}
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.parking }}
+                                        <label class="form-check-label">{{ form.parking.label }}</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check mt-4">
+                                        {{ form.washroom }}
+                                        <label class="form-check-label">{{ form.washroom.label }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Address Section -->
+                    <div class="field-section">
+                        <h6><i class="bi bi-geo-alt"></i> Address</h6>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label small">{{ form.address.label }}</label>
+                                {{ form.address }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.city.label }}</label>
+                                {{ form.city }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">{{ form.state.label }}</label>
+                                {{ form.state }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Map Location Section -->
+                    <div class="field-section">
+                        <h6><i class="bi bi-pin-map"></i> Property Location on Map</h6>
+                        <div class="map-instructions">
+                            <i class="bi bi-info-circle"></i> Search for a location or click on the map to mark the exact location of your property. You can drag the marker to adjust the position.
+                        </div>
+                        
+                        <!-- Location Search -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <input type="text" id="location-search" class="form-control" placeholder="Search for address, city, or landmark...">
+                                <button class="btn btn-primary" type="button" id="search-btn">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                            </div>
+                            <div id="search-results" class="list-group mt-2" style="display: none;"></div>
+                            <small class="text-muted">Example: "Connaught Place, New Delhi" or "Mumbai Central Station"</small>
+                        </div>
+                        
+                        <div id="map"></div>
+                    </div>
+
+                    <!-- Amenities Section -->
+                    <div class="field-section">
+                        <h6><i class="bi bi-star"></i> Amenities</h6>
+                        <div class="row g-2">
+                            {% for checkbox in form.amenities %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ checkbox.tag }}
+                                        <label class="form-check-label">{{ checkbox.choice_label }}</label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- Images Section -->
+                    <div class="field-section">
+                        <h6><i class="bi bi-images"></i> Property Images</h6>
+                        {{ formset.management_form }}
+                        <div class="row g-3">
+                            {% for f in formset.forms %}
+                                <div class="col-md-4">
+                                    <div class="border rounded p-2 small">
+                                        {{ f.image.label_tag }} {{ f.image }}
+                                        <div class="form-check mt-1">
+                                            {{ f.is_primary }} <label class="form-check-label">Primary</label>
+                                        </div>
+                                        {% if f.instance.pk %}
+                                            <div class="form-check mt-1">
+                                                {{ f.DELETE }} <label class="form-check-label">Delete</label>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
                     <div class="mt-4 d-flex justify-content-between">
                         <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
-                        <button class="btn btn-primary">Save &amp; Continue to Payment</button>
+                        <button type="submit" class="btn btn-primary">Save &amp; Continue to Payment</button>
                     </div>
                 </form>
             </div>
@@ -123,18 +446,95 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Get existing coordinates if editing
+    console.log('DOM loaded, initializing dynamic form...');
+    
+    // ========== Dynamic Property Type Fields ==========
+    const subcategorySelect = document.getElementById('id_subcategory');
+    const propertyTypeFields = document.querySelectorAll('.property-type-fields');
+    
+    console.log('Subcategory select found:', subcategorySelect);
+    console.log('Property type fields found:', propertyTypeFields.length);
+    
+    // Field mapping: subcategory value -> field container ID
+    // Handle both old and new values for backward compatibility
+    const fieldMapping = {
+        // New values (uppercase)
+        'APARTMENT': 'apartment-fields',
+        'VILLA': 'villa-fields',
+        'PLOT': 'plot-fields',
+        'OFFICE': 'office-fields',
+        'SHOP': 'shop-fields',
+        // Old values (mixed case) for existing data
+        'Apartment': 'apartment-fields',
+        'Villa': 'villa-fields',
+        'Plot': 'plot-fields',
+        'Office': 'office-fields',
+        'Shop': 'shop-fields',
+        // Display names
+        'House / Villa': 'villa-fields',
+        'Plot / Land': 'plot-fields',
+        'Commercial Office': 'office-fields',
+        'Shop / Showroom': 'shop-fields',
+        'Independent House': 'villa-fields',
+        // Variations
+        'apartment': 'apartment-fields',
+        'villa': 'villa-fields',
+        'plot': 'plot-fields',
+        'office': 'office-fields',
+        'shop': 'shop-fields'
+    };
+    
+    function showRelevantFields() {
+        const selectedType = subcategorySelect.value;
+        console.log('Selected subcategory:', selectedType);
+        
+        // Hide all property type fields
+        propertyTypeFields.forEach(field => {
+            field.classList.remove('active');
+            field.style.display = 'none';
+        });
+        
+        // Show relevant fields based on selection
+        if (selectedType && fieldMapping[selectedType]) {
+            const targetFieldId = fieldMapping[selectedType];
+            const targetField = document.getElementById(targetFieldId);
+            console.log('Target field ID:', targetFieldId, 'Found:', targetField);
+            
+            if (targetField) {
+                targetField.classList.add('active');
+                targetField.style.display = 'block';
+                console.log('Showing fields for:', selectedType);
+            } else {
+                console.error('Target field not found:', targetFieldId);
+            }
+        } else {
+            console.log('No matching field mapping for:', selectedType);
+        }
+    }
+    
+    // Show fields on page load (for edit mode)
+    if (subcategorySelect) {
+        showRelevantFields();
+        
+        // Show fields when subcategory changes
+        subcategorySelect.addEventListener('change', function() {
+            console.log('Subcategory changed');
+            showRelevantFields();
+        });
+    } else {
+        console.error('Subcategory select element not found!');
+    }
+    
+    // ========== Map Functionality ==========
     var existingLat = parseFloat(document.getElementById("id_latitude").value) || null;
     var existingLng = parseFloat(document.getElementById("id_longitude").value) || null;
     
-    // Initialize map - center on India or existing location
     var initialLat = existingLat || 20.5937;
     var initialLng = existingLng || 78.9629;
     var initialZoom = existingLat ? 13 : 5;
     
     var map = L.map('map').setView([initialLat, initialLng], initialZoom);
     
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19
@@ -142,23 +542,18 @@ document.addEventListener("DOMContentLoaded", function() {
     
     var marker = null;
     
-    // Function to add/update marker
     function addMarker(lat, lng) {
-        // Remove existing marker if any
         if (marker) {
             map.removeLayer(marker);
         }
         
-        // Add new draggable marker
         marker = L.marker([lat, lng], {
             draggable: true
         }).addTo(map);
         
-        // Update hidden fields
         document.getElementById("id_latitude").value = lat.toFixed(6);
         document.getElementById("id_longitude").value = lng.toFixed(6);
         
-        // Update coordinates when marker is dragged
         marker.on('dragend', function(e) {
             var position = marker.getLatLng();
             document.getElementById("id_latitude").value = position.lat.toFixed(6);
@@ -166,22 +561,19 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
     
-    // Add existing marker if editing
     if (existingLat && existingLng) {
         addMarker(existingLat, existingLng);
     }
     
-    // Add marker on map click
     map.on('click', function(e) {
         addMarker(e.latlng.lat, e.latlng.lng);
     });
     
-    // Location Search Functionality
+    // ========== Location Search ==========
     var searchInput = document.getElementById('location-search');
     var searchBtn = document.getElementById('search-btn');
     var searchResults = document.getElementById('search-results');
     
-    // Search function
     function searchLocation() {
         var query = searchInput.value.trim();
         if (!query) {
@@ -189,11 +581,9 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
         
-        // Show loading
         searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
         searchResults.style.display = 'block';
         
-        // Use Nominatim API for geocoding (OpenStreetMap)
         var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&limit=5';
         
         fetch(url, {
@@ -208,7 +598,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
             }
             
-            // Display results
             var html = '';
             data.forEach(function(result) {
                 html += '<div class="search-result-item list-group-item list-group-item-action" data-lat="' + result.lat + '" data-lon="' + result.lon + '">';
@@ -217,19 +606,14 @@ document.addEventListener("DOMContentLoaded", function() {
             });
             searchResults.innerHTML = html;
             
-            // Add click handlers to results
             document.querySelectorAll('.search-result-item').forEach(function(item) {
                 item.addEventListener('click', function() {
                     var lat = parseFloat(this.getAttribute('data-lat'));
                     var lon = parseFloat(this.getAttribute('data-lon'));
                     
-                    // Move map to location
                     map.setView([lat, lon], 15);
-                    
-                    // Add marker
                     addMarker(lat, lon);
                     
-                    // Hide results
                     searchResults.style.display = 'none';
                     searchInput.value = this.textContent.trim();
                 });
@@ -241,10 +625,8 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
     
-    // Search button click
     searchBtn.addEventListener('click', searchLocation);
     
-    // Search on Enter key
     searchInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -252,14 +634,12 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
     
-    // Hide results when clicking outside
     document.addEventListener('click', function(e) {
         if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) {
             searchResults.style.display = 'none';
         }
     });
     
-    // Optional: Try to get user's location
     if (navigator.geolocation && !existingLat) {
         navigator.geolocation.getCurrentPosition(function(position) {
             var userLat = position.coords.latitude;
@@ -270,5 +650,3 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 {% endblock %}
-
-
