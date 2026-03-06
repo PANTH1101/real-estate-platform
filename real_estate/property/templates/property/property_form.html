@@ -17,6 +17,28 @@
         border-radius: 0.25rem;
         font-size: 0.875rem;
     }
+    #search-results {
+        max-height: 200px;
+        overflow-y: auto;
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .search-result-item {
+        cursor: pointer;
+        padding: 0.75rem;
+        border: 1px solid #dee2e6;
+        background: white;
+    }
+    .search-result-item:hover {
+        background-color: #f8f9fa;
+    }
+    .search-loading {
+        padding: 0.75rem;
+        text-align: center;
+        color: #6c757d;
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -49,8 +71,21 @@
                     <hr class="my-4">
                     <h6>Property Location</h6>
                     <div class="map-instructions">
-                        <i class="bi bi-info-circle"></i> Click on the map to mark the exact location of your property. You can drag the marker to adjust the position.
+                        <i class="bi bi-info-circle"></i> Search for a location or click on the map to mark the exact location of your property. You can drag the marker to adjust the position.
                     </div>
+                    
+                    <!-- Location Search -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" id="location-search" class="form-control" placeholder="Search for address, city, or landmark...">
+                            <button class="btn btn-primary" type="button" id="search-btn">
+                                <i class="bi bi-search"></i> Search
+                            </button>
+                        </div>
+                        <div id="search-results" class="list-group mt-2" style="display: none;"></div>
+                        <small class="text-muted">Example: "Connaught Place, New Delhi" or "Mumbai Central Station"</small>
+                    </div>
+                    
                     <div id="map"></div>
                     
                     <hr class="my-4">
@@ -107,25 +142,8 @@ document.addEventListener("DOMContentLoaded", function() {
     
     var marker = null;
     
-    // Add existing marker if editing
-    if (existingLat && existingLng) {
-        marker = L.marker([existingLat, existingLng], {
-            draggable: true
-        }).addTo(map);
-        
-        // Update coordinates when marker is dragged
-        marker.on('dragend', function(e) {
-            var position = marker.getLatLng();
-            document.getElementById("id_latitude").value = position.lat.toFixed(6);
-            document.getElementById("id_longitude").value = position.lng.toFixed(6);
-        });
-    }
-    
-    // Add marker on map click
-    map.on('click', function(e) {
-        var lat = e.latlng.lat;
-        var lng = e.latlng.lng;
-        
+    // Function to add/update marker
+    function addMarker(lat, lng) {
         // Remove existing marker if any
         if (marker) {
             map.removeLayer(marker);
@@ -146,6 +164,99 @@ document.addEventListener("DOMContentLoaded", function() {
             document.getElementById("id_latitude").value = position.lat.toFixed(6);
             document.getElementById("id_longitude").value = position.lng.toFixed(6);
         });
+    }
+    
+    // Add existing marker if editing
+    if (existingLat && existingLng) {
+        addMarker(existingLat, existingLng);
+    }
+    
+    // Add marker on map click
+    map.on('click', function(e) {
+        addMarker(e.latlng.lat, e.latlng.lng);
+    });
+    
+    // Location Search Functionality
+    var searchInput = document.getElementById('location-search');
+    var searchBtn = document.getElementById('search-btn');
+    var searchResults = document.getElementById('search-results');
+    
+    // Search function
+    function searchLocation() {
+        var query = searchInput.value.trim();
+        if (!query) {
+            alert('Please enter a location to search');
+            return;
+        }
+        
+        // Show loading
+        searchResults.innerHTML = '<div class="search-loading">Searching...</div>';
+        searchResults.style.display = 'block';
+        
+        // Use Nominatim API for geocoding (OpenStreetMap)
+        var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&limit=5';
+        
+        fetch(url, {
+            headers: {
+                'User-Agent': 'RealEstateHub/1.0'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.length === 0) {
+                searchResults.innerHTML = '<div class="search-loading">No results found. Try a different search term.</div>';
+                return;
+            }
+            
+            // Display results
+            var html = '';
+            data.forEach(function(result) {
+                html += '<div class="search-result-item list-group-item list-group-item-action" data-lat="' + result.lat + '" data-lon="' + result.lon + '">';
+                html += '<strong>' + result.display_name + '</strong>';
+                html += '</div>';
+            });
+            searchResults.innerHTML = html;
+            
+            // Add click handlers to results
+            document.querySelectorAll('.search-result-item').forEach(function(item) {
+                item.addEventListener('click', function() {
+                    var lat = parseFloat(this.getAttribute('data-lat'));
+                    var lon = parseFloat(this.getAttribute('data-lon'));
+                    
+                    // Move map to location
+                    map.setView([lat, lon], 15);
+                    
+                    // Add marker
+                    addMarker(lat, lon);
+                    
+                    // Hide results
+                    searchResults.style.display = 'none';
+                    searchInput.value = this.textContent.trim();
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            searchResults.innerHTML = '<div class="search-loading text-danger">Error searching. Please try again.</div>';
+        });
+    }
+    
+    // Search button click
+    searchBtn.addEventListener('click', searchLocation);
+    
+    // Search on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchLocation();
+        }
+    });
+    
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) {
+            searchResults.style.display = 'none';
+        }
     });
     
     // Optional: Try to get user's location
