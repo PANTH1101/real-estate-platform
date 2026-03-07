@@ -28,15 +28,8 @@ class PaymentCreateView(View):
     def get(self, request: HttpRequest) -> HttpResponse:
         property_id = request.GET.get("property_id")
         prop = get_object_or_404(Property, id=property_id)
-        amount_rupees = decimal.Decimal("499.00")
+        amount_rupees = decimal.Decimal("100.00")
         amount_paise = int(amount_rupees * 100)
-        
-        # Development bypass: activate property without payment if in DEBUG mode
-        if settings.DEBUG and request.GET.get("skip_payment") == "1":
-            prop.is_active = True
-            prop.save(update_fields=["is_active"])
-            messages.success(request, "Property activated (development mode - payment skipped).")
-            return redirect("accounts:dashboard")
         
         if razorpay is None:
             messages.error(
@@ -65,7 +58,12 @@ class PaymentCreateView(View):
                 request,
                 f"Could not initiate payment with Razorpay: {exc}",
             )
-            return redirect("accounts:dashboard")
+            # Show the same failed template with a "Try Again" button
+            return render(
+                request,
+                "payment/failed.html",
+                {"property": prop, "payment": None},
+            )
         seller = get_object_or_404(Seller, id=request.session.get("seller_id"))
         payment = Payment.objects.create(
             seller=seller,
@@ -131,10 +129,11 @@ class PaymentCallbackView(View):
         payment.save()
 
         prop = payment.property
-        prop.is_active = True
-        prop.save(update_fields=["is_active"])
 
-        messages.success(request, "Payment successful. Your property is now live.")
+        messages.success(
+            request,
+            "Payment successful. Your property has been submitted for review. An admin will activate your listing after approval.",
+        )
         return render(
             request,
             "payment/success.html",

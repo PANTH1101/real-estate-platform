@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]  # .../real_estate/
 load_dotenv(BASE_DIR / ".env")
 
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "MqYWoACtSy4rZ1_r5X5MBmpyM1lxD1aG4quiIrM8vc4")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h.strip()]
@@ -180,7 +180,7 @@ ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
 ALLOWED_VIDEO_EXTENSIONS = [".mp4", ".webm"]
 
 # Razorpay (legacy feature)
-RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
-RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_SOKCZwCOuqwdRA")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "K6f8YFpejnkbdTARp8MuqjlI")
 
 

@@ -115,11 +115,30 @@ class PropertyDetailView(View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         prop = get_object_or_404(
-            Property.objects.select_related("seller").prefetch_related(
-                "images", "amenities"
-            ),
+            Property.objects.select_related("seller").prefetch_related("images", "amenities"),
             pk=pk,
             is_active=True,
+        )
+        return render(request, self.template_name, {"property": prop})
+
+
+class PropertyPreviewView(View):
+    template_name = "property/property_detail.html"
+
+    @seller_login_required
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        seller_id = request.session.get("seller_id")
+        prop = get_object_or_404(
+            Property.objects.select_related("seller").prefetch_related("images", "amenities"),
+            pk=pk,
+            seller_id=seller_id,
+        )
+        messages.info(
+            request,
+            "This is a preview of your listing. It will be visible to buyers after an admin activates it.",
         )
         return render(request, self.template_name, {"property": prop})
 
@@ -159,11 +178,9 @@ class PropertyCreateView(View):
                 img.save()
             messages.info(
                 request,
-                "Property saved as draft. Complete payment to list it publicly.",
+                "Property saved as draft. Complete payment so an admin can review and activate your listing.",
             )
             payment_url = f"{reverse('payment:create')}?property_id={prop.id}"
-            if settings.DEBUG:
-                payment_url += "&skip_payment=1"
             return redirect(payment_url)
         return render(
             request,

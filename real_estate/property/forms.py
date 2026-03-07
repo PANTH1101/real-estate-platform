@@ -90,90 +90,39 @@ class PropertyForm(forms.ModelForm):
         }
     
     def clean(self):
+        """
+        Simplified validation so that valid choices from the UI
+        can be submitted without overly strict subcategory-specific rules.
+        """
         cleaned_data = super().clean()
-        subcategory = cleaned_data.get('subcategory')
-        
-        # Validate based on property type
-        if subcategory == Property.APARTMENT:
-            # Apartment required fields
-            if not cleaned_data.get('bhk'):
-                self.add_error('bhk', 'BHK is required for apartments')
-            if not cleaned_data.get('sqft'):
-                self.add_error('sqft', 'Square feet is required for apartments')
-            if not cleaned_data.get('floor'):
-                self.add_error('floor', 'Floor number is required for apartments')
-            if not cleaned_data.get('total_floors'):
-                self.add_error('total_floors', 'Total floors is required for apartments')
-                
-        elif subcategory == Property.VILLA:
-            # Villa required fields
-            if not cleaned_data.get('bhk'):
-                self.add_error('bhk', 'BHK is required for villas')
-            if not cleaned_data.get('plot_area'):
-                self.add_error('plot_area', 'Plot area is required for villas')
-            if not cleaned_data.get('built_up_area'):
-                self.add_error('built_up_area', 'Built-up area is required for villas')
-                
-        elif subcategory == Property.PLOT:
-            # Plot required fields
-            if not cleaned_data.get('plot_area'):
-                self.add_error('plot_area', 'Plot area is required for plots')
-            # Validate plot dimensions if provided
-            plot_length = cleaned_data.get('plot_length')
-            plot_width = cleaned_data.get('plot_width')
-            if plot_length and plot_width:
-                calculated_area = plot_length * plot_width
-                plot_area = cleaned_data.get('plot_area')
-                if plot_area and abs(calculated_area - plot_area) > (plot_area * 0.1):
-                    self.add_error('plot_area', 
-                        f'Plot area ({plot_area} sq ft) does not match calculated area from dimensions ({calculated_area:.2f} sq ft)')
-                    
-        elif subcategory == Property.OFFICE:
-            # Office required fields
-            if not cleaned_data.get('sqft'):
-                self.add_error('sqft', 'Total area is required for offices')
-            if not cleaned_data.get('floor'):
-                self.add_error('floor', 'Floor number is required for offices')
-                
-        elif subcategory == Property.SHOP:
-            # Shop required fields
-            if not cleaned_data.get('sqft'):
-                self.add_error('sqft', 'Shop area is required for shops')
-            if not cleaned_data.get('floor'):
-                self.add_error('floor', 'Floor number is required for shops')
-        
-        # Validate price is positive
-        price = cleaned_data.get('price')
-        if price and price <= 0:
-            self.add_error('price', 'Price must be greater than zero')
-        
-        # Validate numeric fields are positive
-        numeric_fields = ['bhk', 'sqft', 'total_floors', 'plot_area', 'plot_length', 
-                         'plot_width', 'built_up_area', 'cabins', 'conference_rooms', 
-                         'frontage_width', 'maintenance_charges']
-        
+
+        # Basic sanity checks only
+        price = cleaned_data.get("price")
+        if price is not None and price <= 0:
+            self.add_error("price", "Price must be greater than zero")
+
+        numeric_fields = [
+            "bhk",
+            "sqft",
+            "total_floors",
+            "plot_area",
+            "plot_length",
+            "plot_width",
+            "built_up_area",
+            "cabins",
+            "conference_rooms",
+            "frontage_width",
+            "maintenance_charges",
+        ]
         for field in numeric_fields:
             value = cleaned_data.get(field)
             if value is not None and value < 0:
-                self.add_error(field, f'{field.replace("_", " ").title()} cannot be negative')
-        
-        # Validate BHK is reasonable (1-10)
-        bhk = cleaned_data.get('bhk')
-        if bhk and (bhk < 1 or bhk > 10):
-            self.add_error('bhk', 'BHK must be between 1 and 10')
-        
-        # Validate floor number for apartments
-        if subcategory == Property.APARTMENT:
-            floor = cleaned_data.get('floor')
-            total_floors = cleaned_data.get('total_floors')
-            if floor and total_floors:
-                try:
-                    floor_num = int(floor)
-                    if floor_num > total_floors:
-                        self.add_error('floor', 'Floor number cannot be greater than total floors')
-                except ValueError:
-                    pass  # Floor might be "Ground" or "Basement"
-        
+                self.add_error(field, f"{field.replace('_', ' ').title()} cannot be negative")
+
+        bhk = cleaned_data.get("bhk")
+        if bhk is not None and (bhk < 0 or bhk > 20):
+            self.add_error("bhk", "BHK value looks invalid")
+
         return cleaned_data
 
 

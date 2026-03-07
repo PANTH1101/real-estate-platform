@@ -6,9 +6,9 @@
         <div class="card shadow-sm">
             <div class="card-body">
                 <h1 class="h4 mb-2 text-success">Payment Successful</h1>
-                <p class="mb-3">Your property <strong>{{ property.title }}</strong> is now live.</p>
+                <p class="mb-3">Your property <strong>{{ property.title }}</strong> has been submitted for review.</p>
                 <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
-                <a href="{% url 'property:detail' property.id %}" class="btn btn-outline-secondary ms-2">View Listing</a>
+                <a href="{% url 'property:preview' property.id %}" class="btn btn-outline-secondary ms-2">Preview Listing</a>
             </div>
         </div>
     </div>

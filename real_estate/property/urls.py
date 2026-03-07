@@ -5,6 +5,7 @@ from .views import (
     PropertyDeleteView,
     PropertyDetailView,
     PropertyListView,
+    PropertyPreviewView,
     PropertyUpdateView,
 )
 
@@ -13,6 +14,7 @@ app_name = "property"
 urlpatterns = [
     path("", PropertyListView.as_view(), name="list"),
     path("<int:pk>/", PropertyDetailView.as_view(), name="detail"),
+    path("<int:pk>/preview/", PropertyPreviewView.as_view(), name="preview"),
     path("create-form/", PropertyCreateView.as_view(), name="create_form"),
     path("<int:pk>/edit/", PropertyUpdateView.as_view(), name="edit"),
     path("<int:pk>/delete/", PropertyDeleteView.as_view(), name="delete"),
