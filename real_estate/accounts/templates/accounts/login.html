@@ -18,6 +18,13 @@
                     </div>
                     <button class="btn btn-primary w-100">Login</button>
                 </form>
+                <div class="text-center text-muted small my-3">or</div>
+                <a
+                    class="btn btn-outline-dark w-100"
+                    href="{% url 'accounts:google_login' %}?next={{ request.GET.next|default:''|urlencode }}"
+                >
+                    Continue with Google
+                </a>
                 <p class="small mt-3 mb-0 text-center">
                     New seller? <a href="{% url 'accounts:signup' %}">Create an account</a>
                 </p>

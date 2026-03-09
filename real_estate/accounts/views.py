@@ -1,10 +1,16 @@
 from functools import wraps
+import json
+import secrets
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.conf import settings
 from django.utils.decorators import method_decorator
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 
 from .forms import SellerLoginForm, SellerProfileForm, SellerSignupForm
@@ -77,6 +83,128 @@ class LoginView(View):
                 return redirect(next_url)
             messages.error(request, "Invalid email or password.")
         return render(request, self.template_name, {"form": form})
+
+
+class GoogleLoginStartView(View):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+            messages.error(request, "Google login is not configured yet.")
+            return redirect("accounts:login")
+
+        state = secrets.token_urlsafe(24)
+        request.session["google_oauth_state"] = state
+
+        next_url = request.GET.get("next")
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            request.session["google_login_next"] = next_url
+        else:
+            request.session["google_login_next"] = reverse("accounts:dashboard")
+
+        redirect_uri = request.build_absolute_uri(reverse("accounts:google_callback"))
+        params = {
+            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "state": state,
+            "prompt": "select_account",
+        }
+        return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}")
+
+
+class GoogleLoginCallbackView(View):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        expected_state = request.session.pop("google_oauth_state", None)
+        state = request.GET.get("state")
+        code = request.GET.get("code")
+        error = request.GET.get("error")
+
+        if error:
+            messages.error(request, "Google login was cancelled or failed.")
+            return redirect("accounts:login")
+
+        if not expected_state or state != expected_state:
+            messages.error(request, "Invalid Google login state. Please try again.")
+            return redirect("accounts:login")
+
+        if not code:
+            messages.error(request, "Google did not return an authorization code.")
+            return redirect("accounts:login")
+
+        redirect_uri = request.build_absolute_uri(reverse("accounts:google_callback"))
+
+        try:
+            token_data = urlencode(
+                {
+                    "code": code,
+                    "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+                    "redirect_uri": redirect_uri,
+                    "grant_type": "authorization_code",
+                }
+            ).encode("utf-8")
+            token_req = Request(
+                "https://oauth2.googleapis.com/token",
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                method="POST",
+            )
+            with urlopen(token_req, timeout=10) as token_resp:
+                token_payload = json.loads(token_resp.read().decode("utf-8"))
+
+            access_token = token_payload.get("access_token")
+            if not access_token:
+                raise ValueError("Missing access token")
+
+            userinfo_req = Request(
+                f"https://www.googleapis.com/oauth2/v2/userinfo?access_token={access_token}",
+                method="GET",
+            )
+            with urlopen(userinfo_req, timeout=10) as userinfo_resp:
+                user_info = json.loads(userinfo_resp.read().decode("utf-8"))
+        except Exception:
+            messages.error(request, "Unable to sign in with Google right now.")
+            return redirect("accounts:login")
+
+        email = (user_info.get("email") or "").strip().lower()
+        name = (user_info.get("name") or "").strip()
+        email_verified = bool(user_info.get("verified_email", False))
+
+        if not email:
+            messages.error(request, "Google account did not return an email.")
+            return redirect("accounts:login")
+
+        if not email_verified:
+            messages.error(request, "Google account email is not verified.")
+            return redirect("accounts:login")
+
+        seller, created = Seller.objects.get_or_create(
+            email=email,
+            defaults={
+                "name": name or email.split("@")[0],
+                "phone": "",
+                "password": "google_oauth",
+            },
+        )
+        if not created and name and seller.name != name:
+            seller.name = name
+            seller.save(update_fields=["name"])
+
+        request.session["seller_id"] = seller.id
+        messages.success(request, "Logged in with Google successfully.")
+
+        next_url = request.session.pop("google_login_next", reverse("accounts:dashboard"))
+        if not url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = reverse("accounts:dashboard")
+        return redirect(next_url)
 
 
 class LogoutView(View):

@@ -183,4 +183,8 @@ ALLOWED_VIDEO_EXTENSIONS = [".mp4", ".webm"]
 RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "rzp_test_SOKCZwCOuqwdRA")
 RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "K6f8YFpejnkbdTARp8MuqjlI")
 
+# Google OAuth (legacy seller login)
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+GOOGLE_OAUTH_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+
 
