@@ -57,8 +57,9 @@
         <div class="card shadow-sm mb-3">
             <div class="card-body">
                 <h5 class="card-title">Seller Details</h5>
-                <p class="mb-1 fw-semibold">{{ property.seller.name }}</p>
-                <p class="text-muted small mb-2">Listed on {{ property.created_at|date:"d M Y" }}</p>
+                <p class="text-muted small mb-2">
+                    Verify your email code to unlock seller contact details.
+                </p>
                 <button class="btn btn-primary w-100" data-property-id="{{ property.id }}" id="lead-open-btn">
                     I want to buy this property
                 </button>
@@ -90,6 +91,9 @@
             <div class="modal-body">
                 <form id="lead-form">
                     {% csrf_token %}
+                    <p class="small text-muted mb-3">
+                        Submit your details and verify with a 6-digit email code to view seller contact.
+                    </p>
                     <div class="mb-2">
                         <label class="form-label small">Name</label>
                         <input type="text" name="name" class="form-control" required>
@@ -102,14 +106,19 @@
                         <label class="form-label small">Phone</label>
                         <input type="text" name="phone" class="form-control" required>
                     </div>
+                    <div class="mb-2 d-none" id="otp-group">
+                        <label class="form-label small">Email Verification Code</label>
+                        <input type="text" name="otp" id="otp-input" class="form-control" maxlength="6" placeholder="Enter 6-digit code">
+                    </div>
                     <div id="lead-error" class="text-danger small d-none"></div>
+                    <div id="lead-success" class="text-success small d-none"></div>
                     <div id="seller-contact" class="mt-3 d-none">
                         <h6>Seller Contact Details</h6>
                         <p class="mb-0" id="seller-name"></p>
                         <p class="mb-0" id="seller-email"></p>
                         <p class="mb-0" id="seller-phone"></p>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mt-3">Submit</button>
+                    <button type="submit" class="btn btn-primary w-100 mt-3" id="lead-submit-btn">Send Verification Code</button>
                 </form>
             </div>
         </div>
@@ -147,12 +156,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const sellerName = document.getElementById("seller-name");
     const sellerEmail = document.getElementById("seller-email");
     const sellerPhone = document.getElementById("seller-phone");
+    const otpGroup = document.getElementById("otp-group");
+    const otpInput = document.getElementById("otp-input");
+    const submitBtn = document.getElementById("lead-submit-btn");
+    const successEl = document.getElementById("lead-success");
 
     if (leadButton && modalEl) {
         const bsModal = new bootstrap.Modal(modalEl);
         leadButton.addEventListener("click", function () {
             errorEl.classList.add("d-none");
+            successEl.classList.add("d-none");
             sellerBox.classList.add("d-none");
+            otpGroup.classList.add("d-none");
+            otpInput.value = "";
+            submitBtn.textContent = "Send Verification Code";
+            submitBtn.disabled = false;
             leadForm.reset();
             bsModal.show();
         });
@@ -160,6 +178,7 @@ document.addEventListener("DOMContentLoaded", function () {
         leadForm.addEventListener("submit", function (e) {
             e.preventDefault();
             errorEl.classList.add("d-none");
+            successEl.classList.add("d-none");
             const formData = new FormData(leadForm);
             fetch("{% url 'leads:create' property.id %}", {
                 method: "POST",
@@ -172,11 +191,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (data.error) {
                     errorEl.textContent = data.error;
                     errorEl.classList.remove("d-none");
+                } else if (data.otp_required) {
+                    successEl.textContent = data.message || "Verification code sent.";
+                    successEl.classList.remove("d-none");
+                    otpGroup.classList.remove("d-none");
+                    submitBtn.textContent = "Verify Code & Show Seller Details";
                 } else {
                     sellerName.textContent = "Name: " + data.seller.name;
                     sellerEmail.textContent = "Email: " + data.seller.email;
                     sellerPhone.textContent = "Phone: " + data.seller.phone;
                     sellerBox.classList.remove("d-none");
+                    submitBtn.textContent = "Verified";
+                    submitBtn.disabled = true;
                 }
             }).catch(() => {
                 errorEl.textContent = "Something went wrong. Please try again.";

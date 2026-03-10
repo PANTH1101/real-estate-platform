@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Choose {{ title }} | Real Estate{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h1 class="h4 text-center mb-4">Choose {{ title }} Type</h1>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h5">Buyer</h2>
+                        <p class="text-muted small mb-3">Browse and view property details.</p>
+                        {% if mode == "login" %}
+                            <a class="btn btn-primary w-100" href="{% url 'accounts:buyer_login' %}">Login as Buyer</a>
+                        {% else %}
+                            <a class="btn btn-primary w-100" href="{% url 'accounts:buyer_signup' %}">Signup as Buyer</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <h2 class="h5">Seller</h2>
+                        <p class="text-muted small mb-3">List and manage your properties.</p>
+                        {% if mode == "login" %}
+                            <a class="btn btn-outline-primary w-100" href="{% url 'accounts:seller_login' %}">Login as Seller</a>
+                        {% else %}
+                            <a class="btn btn-outline-primary w-100" href="{% url 'accounts:seller_signup' %}">Signup as Seller</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

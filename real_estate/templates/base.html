@@ -23,9 +23,11 @@
                 {% if request.session.seller_id %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a></li>
+                {% elif request.user.is_authenticated and request.user.role == "BUYER" %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'accounts:logout' %}">Logout</a></li>
                 {% else %}
-                    <li class="nav-item"><a class="nav-link" href="{% url 'accounts:login' %}">Login</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'accounts:signup' %}">Signup</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'accounts:login_choice' %}">Login</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'accounts:signup_choice' %}">Signup</a></li>
                 {% endif %}
                 <li class="nav-item ms-lg-3">
                     <a class="btn btn-primary rounded-pill" href="{% url 'property_create' %}">List Property</a>

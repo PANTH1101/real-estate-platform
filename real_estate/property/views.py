@@ -12,6 +12,7 @@ from django.views import View
 
 from accounts.views import seller_login_required
 from accounts.models import Seller
+from apps.accounts.models import UserRole
 from payment.models import Payment
 
 from .forms import PropertyForm, PropertyImageFormSet
@@ -118,6 +119,11 @@ class PropertyDetailView(View):
     template_name = "property/property_detail.html"
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        if not request.user.is_authenticated or request.user.role != UserRole.BUYER:
+            messages.info(request, "Login required to view property details.")
+            buyer_login_url = reverse("accounts:buyer_login")
+            return redirect(f"{buyer_login_url}?next={request.path}")
+
         prop = get_object_or_404(
             Property.objects.select_related("seller").prefetch_related("images", "amenities"),
             pk=pk,
