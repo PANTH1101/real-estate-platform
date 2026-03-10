@@ -1,14 +1,18 @@
 from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
+from django.db.models import Count, OuterRef, Q, Subquery, Sum
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.decorators import method_decorator
 from django.views import View
 
 from accounts.views import seller_login_required
 from accounts.models import Seller
+from payment.models import Payment
 
 from .forms import PropertyForm, PropertyImageFormSet
 from .models import Amenity, Property
@@ -248,3 +252,120 @@ class PropertyDeleteView(View):
         prop.delete()
         messages.info(request, "Property deleted.")
         return redirect("accounts:dashboard")
+
+
+class AdminPanelLoginView(View):
+    template_name = "property/admin_login.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        if request.user.is_authenticated and request.user.is_staff:
+            return redirect("property:admin_pending")
+        return render(request, self.template_name)
+
+    def post(self, request: HttpRequest) -> HttpResponse:
+        email = (request.POST.get("email") or "").strip()
+        password = request.POST.get("password") or ""
+
+        user = authenticate(request, username=email, password=password)
+        if user and user.is_staff:
+            login(request, user)
+            messages.success(request, "Welcome to the admin panel.")
+            return redirect("property:admin_pending")
+
+        messages.error(request, "Invalid admin credentials.")
+        return render(request, self.template_name, {"email": email})
+
+
+class AdminPanelLogoutView(View):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        logout(request)
+        messages.info(request, "Admin panel session ended.")
+        return redirect("property:admin_login")
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class PendingPropertyAdminView(View):
+    template_name = "property/admin_pending_properties.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        latest_payment_status = (
+            Payment.objects.filter(property_id=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("status")[:1]
+        )
+        pending_properties = (
+            Property.objects.filter(is_active=False)
+            .annotate(payment_status=Subquery(latest_payment_status))
+            .select_related("seller")
+            .prefetch_related("images")
+            .order_by("-created_at")
+        )
+        live_properties = (
+            Property.objects.filter(is_active=True)
+            .select_related("seller")
+            .prefetch_related("images")
+            .order_by("-updated_at")
+        )
+        payments = (
+            Payment.objects.select_related("seller", "property")
+            .order_by("-created_at")
+        )
+        successful_payments = payments.filter(status="SUCCESS")
+        payment_success_amount = successful_payments.aggregate(total=Sum("amount"))["total"] or 0
+        amenities = Amenity.objects.all()
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "pending_properties": pending_properties,
+                "live_properties": live_properties,
+                "payments": payments,
+                "amenities": amenities,
+                "total_properties": pending_properties.count() + live_properties.count(),
+                "pending_count": pending_properties.count(),
+                "live_count": live_properties.count(),
+                "amenity_count": amenities.count(),
+                "payment_count": payments.count(),
+                "payment_success_count": successful_payments.count(),
+                "payment_success_amount": payment_success_amount,
+            },
+        )
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class ApprovePendingPropertyView(View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        prop = get_object_or_404(Property, pk=pk, is_active=False)
+        prop.is_active = True
+        prop.save(update_fields=["is_active", "updated_at"])
+        messages.success(request, f'"{prop.title}" is now live on the website.')
+        return redirect("property:admin_pending")
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class DeactivateLivePropertyView(View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        prop = get_object_or_404(Property, pk=pk, is_active=True)
+        prop.is_active = False
+        prop.save(update_fields=["is_active", "updated_at"])
+        messages.info(request, f'"{prop.title}" moved back to pending.')
+        return redirect("property:admin_pending")
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class AdminAmenityCreateView(View):
+    def post(self, request: HttpRequest) -> HttpResponse:
+        amenity_name = (request.POST.get("amenity_name") or "").strip()
+        if not amenity_name:
+            messages.error(request, "Amenity name is required.")
+            return redirect("property:admin_pending")
+
+        existing = Amenity.objects.filter(name__iexact=amenity_name).first()
+        if existing:
+            messages.info(request, f'Amenity "{existing.name}" already exists.')
+            return redirect("property:admin_pending")
+
+        Amenity.objects.create(name=amenity_name)
+        messages.success(request, f'Amenity "{amenity_name}" added successfully.')
+        return redirect("property:admin_pending")

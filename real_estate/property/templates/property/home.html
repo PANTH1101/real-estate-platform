@@ -3,6 +3,12 @@
 {% block title %}Home | Real Estate{% endblock %}
 {% block content %}
 <section class="hero-section mb-5">
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{% url 'property:admin_pending' %}" class="admin-logo-link" title="Admin Panel">
+            <span class="admin-logo-mark">A</span>
+            <span class="admin-logo-text">Admin Panel</span>
+        </a>
+    </div>
     <div class="row align-items-center">
         <div class="col-lg-6">
             <h1 class="display-5 fw-bold mb-3 text-dark">Find your dream home with <span class="text-primary">RealEstateHub</span></h1>

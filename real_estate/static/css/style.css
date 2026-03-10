@@ -18,6 +18,76 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+.admin-logo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: #0b1727;
+    font-weight: 600;
+    background: #fff;
+    border: 1px solid #dbe2ea;
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem 0.35rem 0.35rem;
+    box-shadow: 0 4px 10px rgba(11, 23, 39, 0.08);
+}
+
+.admin-logo-link:hover {
+    color: #0b1727;
+    border-color: #0b1727;
+}
+
+.admin-logo-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0b1727, #0061f2);
+    color: #fff;
+    font-size: 0.95rem;
+}
+
+.admin-logo-text {
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+}
+
+.admin-login-wrap {
+    min-height: 68vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-login-card {
+    width: 100%;
+    max-width: 460px;
+    border-radius: 16px;
+}
+
+.dashboard-stat-card {
+    border: 1px solid #e6edf5;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(11, 23, 39, 0.06);
+}
+
+.dashboard-stat-title {
+    margin-bottom: 0.25rem;
+    color: #6b7280;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.dashboard-stat-value {
+    margin: 0;
+    color: #111827;
+    font-size: 1.65rem;
+    font-weight: 700;
+}
+
 .property-card {
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
