@@ -73,8 +73,9 @@
         <h1 class="h4 mb-3">{% if property %}Edit{% else %}List{% endif %} Property</h1>
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data" id="property-form">
+                <form method="post" enctype="multipart/form-data" id="property-form" novalidate>
                     {% csrf_token %}
+                    <div id="form-error" class="alert alert-danger d-none">Please give valid details.</div>
                     
                     <!-- Basic Information Section -->
                     <div class="field-section">
@@ -447,6 +448,25 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     console.log('DOM loaded, initializing dynamic form...');
+
+    const propertyForm = document.getElementById("property-form");
+    const formError = document.getElementById("form-error");
+
+    if (propertyForm) {
+        propertyForm.addEventListener("submit", function (e) {
+            if (!propertyForm.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (formError) {
+                    formError.textContent = "Please give valid details.";
+                    formError.classList.remove("d-none");
+                }
+                propertyForm.reportValidity();
+            } else if (formError) {
+                formError.classList.add("d-none");
+            }
+        });
+    }
     
     // ========== Dynamic Property Type Fields ==========
     const subcategorySelect = document.getElementById('id_subcategory');
@@ -484,6 +504,16 @@ document.addEventListener("DOMContentLoaded", function() {
         'shop': 'shop-fields'
     };
     
+    function setFieldsEnabled(container, enabled) {
+        if (!container) {
+            return;
+        }
+        const inputs = container.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.disabled = !enabled;
+        });
+    }
+
     function showRelevantFields() {
         const selectedType = subcategorySelect.value;
         console.log('Selected subcategory:', selectedType);
@@ -492,6 +522,7 @@ document.addEventListener("DOMContentLoaded", function() {
         propertyTypeFields.forEach(field => {
             field.classList.remove('active');
             field.style.display = 'none';
+            setFieldsEnabled(field, false);
         });
         
         // Show relevant fields based on selection
@@ -503,6 +534,7 @@ document.addEventListener("DOMContentLoaded", function() {
             if (targetField) {
                 targetField.classList.add('active');
                 targetField.style.display = 'block';
+                setFieldsEnabled(targetField, true);
                 console.log('Showing fields for:', selectedType);
             } else {
                 console.error('Target field not found:', targetFieldId);

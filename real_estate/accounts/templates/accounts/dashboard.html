@@ -42,6 +42,9 @@
                             <div class="d-flex gap-2">
                                 <a href="{% url 'property:detail' p.id %}" class="btn btn-sm btn-outline-secondary">Preview</a>
                                 <a href="{% url 'property:edit' p.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                {% if not p.is_active and p.payment_status != "SUCCESS" %}
+                                    <a href="{% url 'payment:create' %}?property_id={{ p.id }}" class="btn btn-sm btn-outline-success">Make Payment</a>
+                                {% endif %}
                                 <form method="post" action="{% url 'property:delete' p.id %}" onsubmit="return confirm('Delete this property?');">
                                     {% csrf_token %}
                                     <button class="btn btn-sm btn-outline-danger">Delete</button>

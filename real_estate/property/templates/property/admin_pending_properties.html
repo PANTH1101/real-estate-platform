@@ -101,6 +101,10 @@
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                     </form>
+                                    <form method="post" action="{% url 'property:admin_delete_property' property.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete &quot;{{ property.title|escapejs }}&quot;? This cannot be undone.');">Delete</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -155,6 +159,10 @@
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-outline-warning">Make Pending</button>
                                     </form>
+                                    <form method="post" action="{% url 'property:admin_delete_property' property.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete &quot;{{ property.title|escapejs }}&quot;? This cannot be undone.');">Delete</button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
@@ -201,7 +209,13 @@
                     {% if amenities %}
                     <div class="d-flex flex-wrap gap-2">
                         {% for amenity in amenities %}
-                        <span class="badge rounded-pill text-bg-light border">{{ amenity.name }}</span>
+                        <span class="badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2">
+                            {{ amenity.name }}
+                            <form method="post" action="{% url 'property:admin_delete_amenity' amenity.id %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-link p-0 text-danger" title="Delete" aria-label="Delete amenity" onclick="return confirm('Delete &quot;{{ amenity.name|escapejs }}&quot;?');">&times;</button>
+                            </form>
+                        </span>
                         {% endfor %}
                     </div>
                     {% else %}

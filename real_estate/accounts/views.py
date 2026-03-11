@@ -11,6 +11,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.conf import settings
+from django.db.models import OuterRef, Subquery
 from django.utils.decorators import method_decorator
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
@@ -24,6 +25,7 @@ from .forms import (
     SellerSignupForm,
 )
 from .models import Seller
+from payment.models import Payment
 
 User = get_user_model()
 
@@ -447,7 +449,16 @@ class DashboardView(View):
 
     def get(self, request: HttpRequest) -> HttpResponse:
         seller = get_object_or_404(Seller, id=request.session.get("seller_id"))
-        properties = seller.properties.all().prefetch_related("leads")
+        latest_payment_status = (
+            Payment.objects.filter(property_id=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("status")[:1]
+        )
+        properties = (
+            seller.properties.all()
+            .prefetch_related("leads")
+            .annotate(payment_status=Subquery(latest_payment_status))
+        )
         total_leads = sum(p.leads.count() for p in properties)
         return render(
             request,

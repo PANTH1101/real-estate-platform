@@ -119,6 +119,28 @@ class PropertyDetailView(View):
     template_name = "property/property_detail.html"
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        # Allow a logged-in seller to view their own property's detail page without
+        # needing a buyer login.
+        seller_id = request.session.get("seller_id")
+        if seller_id:
+            seller_property = (
+                Property.objects.select_related("seller")
+                .prefetch_related("images", "amenities")
+                .filter(pk=pk, seller_id=seller_id)
+                .first()
+            )
+            if seller_property:
+                if not seller_property.is_active:
+                    messages.info(
+                        request,
+                        "This is a preview of your listing. It will be visible to buyers after an admin activates it.",
+                    )
+                return render(
+                    request,
+                    self.template_name,
+                    {"property": seller_property, "is_seller_owner": True},
+                )
+
         if not request.user.is_authenticated or request.user.role != UserRole.BUYER:
             messages.info(request, "Login required to view property details.")
             buyer_login_url = reverse("accounts:buyer_login")
@@ -129,7 +151,11 @@ class PropertyDetailView(View):
             pk=pk,
             is_active=True,
         )
-        return render(request, self.template_name, {"property": prop})
+        return render(
+            request,
+            self.template_name,
+            {"property": prop, "is_seller_owner": False},
+        )
 
 
 class PropertyPreviewView(View):
@@ -150,7 +176,11 @@ class PropertyPreviewView(View):
             request,
             "This is a preview of your listing. It will be visible to buyers after an admin activates it.",
         )
-        return render(request, self.template_name, {"property": prop})
+        return render(
+            request,
+            self.template_name,
+            {"property": prop, "is_seller_owner": True},
+        )
 
 
 class PropertyCreateView(View):
@@ -374,4 +404,24 @@ class AdminAmenityCreateView(View):
 
         Amenity.objects.create(name=amenity_name)
         messages.success(request, f'Amenity "{amenity_name}" added successfully.')
+        return redirect("property:admin_pending")
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class AdminAmenityDeleteView(View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        amenity = get_object_or_404(Amenity, pk=pk)
+        amenity_name = amenity.name
+        amenity.delete()
+        messages.info(request, f'Amenity "{amenity_name}" deleted.')
+        return redirect("property:admin_pending")
+
+
+@method_decorator(staff_member_required(login_url="/properties/admin/login/"), name="dispatch")
+class AdminPropertyDeleteView(View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        prop = get_object_or_404(Property, pk=pk)
+        prop_title = prop.title
+        prop.delete()
+        messages.info(request, f'Property "{prop_title}" deleted.')
         return redirect("property:admin_pending")

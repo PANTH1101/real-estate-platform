@@ -1,9 +1,11 @@
 from django.urls import path
 
 from .views import (
+    AdminAmenityDeleteView,
     AdminAmenityCreateView,
     AdminPanelLoginView,
     AdminPanelLogoutView,
+    AdminPropertyDeleteView,
     ApprovePendingPropertyView,
     DeactivateLivePropertyView,
     PendingPropertyAdminView,
@@ -22,6 +24,16 @@ urlpatterns = [
     path("admin/logout/", AdminPanelLogoutView.as_view(), name="admin_logout"),
     path("admin/pending/", PendingPropertyAdminView.as_view(), name="admin_pending"),
     path("admin/amenities/add/", AdminAmenityCreateView.as_view(), name="admin_add_amenity"),
+    path(
+        "admin/amenities/<int:pk>/delete/",
+        AdminAmenityDeleteView.as_view(),
+        name="admin_delete_amenity",
+    ),
+    path(
+        "admin/properties/<int:pk>/delete/",
+        AdminPropertyDeleteView.as_view(),
+        name="admin_delete_property",
+    ),
     path(
         "admin/pending/<int:pk>/approve/",
         ApprovePendingPropertyView.as_view(),

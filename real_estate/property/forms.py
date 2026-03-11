@@ -3,12 +3,38 @@ from django.forms import inlineformset_factory
 
 from .models import Amenity, Property, PropertyImage
 
+PRICE_MIN = 1
+PRICE_MAX = 1000000000
+AREA_MIN = 100
+AREA_MAX = 1000000
+LENGTH_MIN = 1
+LENGTH_MAX = 10000
+COUNT_MAX = 200
+BHK_MAX = 20
+
 
 class PropertyForm(forms.ModelForm):
+    FACING_CHOICES = [
+        ("", "Select facing"),
+        ("N", "North"),
+        ("NE", "North East"),
+        ("E", "East"),
+        ("SE", "South East"),
+        ("S", "South"),
+        ("SW", "South West"),
+        ("W", "West"),
+        ("NW", "North West"),
+    ]
+
     amenities = forms.ModelMultipleChoiceField(
         queryset=Amenity.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         required=False,
+    )
+    facing = forms.ChoiceField(
+        choices=FACING_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
     )
 
     class Meta:
@@ -61,32 +87,110 @@ class PropertyForm(forms.ModelForm):
             "category": forms.Select(attrs={"class": "form-select", "id": "id_category"}),
             "subcategory": forms.Select(attrs={"class": "form-select", "id": "id_subcategory"}),
             "property_type": forms.Select(attrs={"class": "form-select"}),
-            "price": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "price": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": PRICE_MIN,
+                    "max": PRICE_MAX,
+                }
+            ),
             "address": forms.TextInput(attrs={"class": "form-control"}),
             "city": forms.TextInput(attrs={"class": "form-control"}),
             "state": forms.TextInput(attrs={"class": "form-control"}),
             "latitude": forms.HiddenInput(attrs={"id": "id_latitude"}),
             "longitude": forms.HiddenInput(attrs={"id": "id_longitude"}),
-            "facing": forms.TextInput(attrs={"class": "form-control"}),
+            "facing": forms.Select(attrs={"class": "form-select"}),
             # Common
-            "sqft": forms.NumberInput(attrs={"class": "form-control"}),
+            "sqft": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": AREA_MIN,
+                    "max": AREA_MAX,
+                }
+            ),
             # Apartment/Villa
-            "bhk": forms.NumberInput(attrs={"class": "form-control"}),
+            "bhk": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": 0,
+                    "max": BHK_MAX,
+                }
+            ),
             "floor": forms.TextInput(attrs={"class": "form-control"}),
-            "total_floors": forms.NumberInput(attrs={"class": "form-control"}),
+            "total_floors": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": 0,
+                    "max": COUNT_MAX,
+                }
+            ),
             "furnishing": forms.Select(attrs={"class": "form-select"}),
-            "maintenance_charges": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "maintenance_charges": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": 0,
+                    "max": PRICE_MAX,
+                }
+            ),
             # Villa
-            "built_up_area": forms.NumberInput(attrs={"class": "form-control"}),
+            "built_up_area": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": AREA_MIN,
+                    "max": AREA_MAX,
+                }
+            ),
             # Plot
-            "plot_area": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "plot_length": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
-            "plot_width": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "plot_area": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": AREA_MIN,
+                    "max": AREA_MAX,
+                }
+            ),
+            "plot_length": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": LENGTH_MIN,
+                    "max": LENGTH_MAX,
+                }
+            ),
+            "plot_width": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": LENGTH_MIN,
+                    "max": LENGTH_MAX,
+                }
+            ),
             # Office
-            "cabins": forms.NumberInput(attrs={"class": "form-control"}),
-            "conference_rooms": forms.NumberInput(attrs={"class": "form-control"}),
+            "cabins": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": 0,
+                    "max": COUNT_MAX,
+                }
+            ),
+            "conference_rooms": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": 0,
+                    "max": COUNT_MAX,
+                }
+            ),
             # Shop
-            "frontage_width": forms.NumberInput(attrs={"class": "form-control", "step": "0.01"}),
+            "frontage_width": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "min": LENGTH_MIN,
+                    "max": LENGTH_MAX,
+                }
+            ),
         }
     
     def clean(self):
@@ -124,6 +228,18 @@ class PropertyForm(forms.ModelForm):
             self.add_error("bhk", "BHK value looks invalid")
 
         return cleaned_data
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        current_facing = getattr(self.instance, "facing", "") if self.instance else ""
+        base_choices = list(self.FACING_CHOICES)
+        if current_facing and current_facing not in {choice[0] for choice in base_choices}:
+            base_choices = [
+                ("", "Select facing"),
+                (current_facing, current_facing),
+                *[choice for choice in base_choices if choice[0]],
+            ]
+        self.fields["facing"].choices = base_choices
 
 
 class PropertyImageForm(forms.ModelForm):
